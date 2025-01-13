@@ -1,103 +1,89 @@
-#define dW digitalWrite
-#define dR digitalRead
+#define RH_MOTOR_A 11
+#define RH_MOTOR_B 10
+#define LH_MOTOR_A 6
+#define LH_MOTOR_B 5
 
+#define trig1 12
+#define echo1 13
 
-//Пины
-//in - input на драйвере l293d
-//en - enable
-#define in1 13
-#define in2 12
-#define in3 11
-#define in4 10
-#define en1 5
-#define en2 6
+const double CONSTANT_FOR_CONVERTING_TO_SM = 0.01715;
 
-#define debug_btn 7 //Кнопка на макетке для отладки
+int hc1_value;
 
-void init_motors()
+int read_hc(int trig, int echo)
 {
-  pinMode(in1, OUTPUT);
-  pinMode(in2, OUTPUT);
-  pinMode(in3, OUTPUT);
-  pinMode(in4, OUTPUT);
-}
-void init_debug_components() 
-{
-  pinMode(debug_btn, INPUT_PULLUP);
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+
+  int duration = pulseIn(echo, HIGH);
+  
+  return (duration * CONSTANT_FOR_CONVERTING_TO_SM);
 }
 
-///////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////
-
-void setup() 
+void setup()
 {
-  delay(2000);
-  init_motors();
-  init_debug_components();
+  pinMode(RH_MOTOR_A, OUTPUT);
+  pinMode(RH_MOTOR_B, OUTPUT);
+  pinMode(LH_MOTOR_A, OUTPUT);
+  pinMode(LH_MOTOR_B, OUTPUT);
+  pinMode(trig1, OUTPUT);
+  pinMode(echo1, INPUT);
 
-
+  Serial.begin(9600);
 }
 
-///////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////
-/***************************CONST*****************************/
-const int B_max = 255;
-const int A_max = 225;
-///////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////
-
-void B_on(int en_value = B_max, bool isStraight = true)
+//true - вперед, false - назад
+void rh_motor(int speed, bool direction = true)
 {
-  digitalWrite(in1, isStraight ? HIGH : LOW);
-  digitalWrite(in2, isStraight ? LOW : HIGH);
-  analogWrite(en1, en_value);
-}
-void B_off()
-{
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-  digitalWrite(en1, LOW);
-}
-void A_on(int en_value = A_max, bool isStraight = true)
-{
-  digitalWrite(in3, isStraight ? LOW : HIGH);
-  digitalWrite(in4, isStraight ? HIGH : LOW);
-  analogWrite(en2, en_value);
-}
-void A_off()
-{
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
-  digitalWrite(en2, LOW);
-}
-void Start(int t)
-{
-  for (int i = B_max/3, j = A_max/3; i < B_max; i++, j++)
+  if (direction)
   {
-    delay(t/(A_max/3));
-    A_on(j);
-    B_on(i);
+    analogWrite(RH_MOTOR_A, speed);
+    analogWrite(RH_MOTOR_B, LOW);
   }
-}
-
-void test_program()
-{
-  Start(5000);
-  delay(2000);
-  A_off();
-  B_off();
-}
-
-///////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////
-
-void loop() 
-{
-
-  bool but = !digitalRead(debug_btn);
-  if (but) 
+  else 
   {
-    delay(200);
-    test_program();
+    analogWrite(RH_MOTOR_A, LOW);
+    analogWrite(RH_MOTOR_B, speed);
   }
+  
+}
+void rh_off()
+{
+  analogWrite(RH_MOTOR_A, LOW);
+  analogWrite(RH_MOTOR_B, LOW);
+}
+
+void lh_motor(int speed, bool direction = true)
+{
+  if (direction)
+  {
+    analogWrite(LH_MOTOR_A, speed);
+    analogWrite(LH_MOTOR_B, LOW);
+  }
+  else 
+  {
+    analogWrite(LH_MOTOR_A, LOW);
+    analogWrite(LH_MOTOR_B, speed);
+  }
+  
+}
+void lh_off()
+{
+  analogWrite(LH_MOTOR_A, LOW);
+  analogWrite(LH_MOTOR_B, LOW);
+}
+
+void loop()
+{
+  rh_motor(255);
+  lh_motor(255);
+  hc1_value = read_hc(trig1, echo1);
+
+  Serial.println(hc1_value);
+
+  //delay(2);
 }
