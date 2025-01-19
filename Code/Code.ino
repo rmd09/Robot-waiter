@@ -102,12 +102,12 @@ void lh_off()
 
 void loop()
 {
-  rh_motor(255);
-  lh_motor(255);
-  hc1_value = read_hc(trig1, echo1);
+  rh_motor(55);
+  //lh_motor(255);
+  //hc1_value = read_hc(trig1, echo1);
 
   //Serial.println(hc1_value);
-  Serial.println(digitalRead(LH_ENCODER_A));
+  //Serial.println(digitalRead(LH_ENCODER_A));
 
   //delay(2);
 }
