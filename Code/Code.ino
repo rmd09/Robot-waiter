@@ -1,47 +1,22 @@
-#define RH_MOTOR_A 11
-#define RH_MOTOR_B 10
-#define LH_MOTOR_A 6
-#define LH_MOTOR_B 5
+#define RH_MOTOR_A 5
+#define RH_MOTOR_B 4
+#define LH_MOTOR_A 7
+#define LH_MOTOR_B 6
 
-#define LH_ENCODER_A 2
-#define LH_ENCODER_B 7
+#define svet1 A15
+#define svet2 A14
 
-#define trig1 12
-#define echo1 13
+#define button 52
 
-const double CONSTANT_FOR_CONVERTING_TO_SM = 0.01715;
+const int SPEED = 100;
+const int Kp = 0.4;
+const int Kd = 4;
 
-volatile int lh_count = 0;
-int hc1_value;
-
-int read_hc(int trig, int echo)
-{
-  digitalWrite(trig, LOW);
-  delayMicroseconds(2);
-
-  digitalWrite(trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig, LOW);
-
-  int duration = pulseIn(echo, HIGH);
-  
-  return (duration * CONSTANT_FOR_CONVERTING_TO_SM);
-}
-
-void lh_encoder_event()
-{
-  int a = digitalRead(LH_ENCODER_A);
-  int b = digitalRead(LH_ENCODER_B);
-
-  if (a != b)
-  {
-    lh_count++;
-  }
-  else 
-  {
-    lh_count--;
-  }
-}
+int last_er = 0;
+int sv1 = 0;
+int sv2 = 0;
+int white = 35;
+int black = 150;
 
 void setup()
 {
@@ -49,65 +24,101 @@ void setup()
   pinMode(RH_MOTOR_B, OUTPUT);
   pinMode(LH_MOTOR_A, OUTPUT);
   pinMode(LH_MOTOR_B, OUTPUT);
-  pinMode(trig1, OUTPUT);
-  pinMode(echo1, INPUT);
-  pinMode(LH_ENCODER_A, INPUT);
-  pinMode(LH_ENCODER_B, INPUT);
+  pinMode(button, INPUT_PULLUP);
+  pinMode(svet1, INPUT);
+  pinMode(svet2, INPUT);
 
-  attachInterrupt(digitalPinToInterrupt(LH_ENCODER_A), lh_encoder_event, CHANGE);
 
   Serial.begin(9600);
+
+  correct();
 }
 
-//true - вперед, false - назад
-void rh_motor(int speed, bool direction = true)
+void drive(int lh, int rh)
 {
-  if (direction)
+  if (lh < 0)
   {
-    analogWrite(RH_MOTOR_A, speed);
-    analogWrite(RH_MOTOR_B, LOW);
+    analogWrite(LH_MOTOR_B, abs(lh));
+    digitalWrite(LH_MOTOR_A, LOW);
   }
-  else 
+  else if (lh > 0)
   {
-    analogWrite(RH_MOTOR_A, LOW);
-    analogWrite(RH_MOTOR_B, speed);
+    analogWrite(LH_MOTOR_A, abs(lh));
+    digitalWrite(LH_MOTOR_B, LOW);    
   }
-  
-}
-void rh_off()
-{
-  analogWrite(RH_MOTOR_A, LOW);
-  analogWrite(RH_MOTOR_B, LOW);
+  else
+  {
+    digitalWrite(LH_MOTOR_A, LOW);
+    digitalWrite(LH_MOTOR_B, LOW);
+  }
+
+  if (rh < 0)
+  {
+    analogWrite(RH_MOTOR_B, abs(rh));
+    digitalWrite(RH_MOTOR_A, LOW);
+  }
+  else if (rh > 0)
+  {
+    analogWrite(RH_MOTOR_A, abs(rh));
+    digitalWrite(RH_MOTOR_B, LOW);    
+  }
+  else
+  {
+    digitalWrite(RH_MOTOR_A, LOW);
+    digitalWrite(RH_MOTOR_B, LOW);
+  }
 }
 
-void lh_motor(int speed, bool direction = true)
+void read_svet()
 {
-  if (direction)
-  {
-    analogWrite(LH_MOTOR_A, speed);
-    analogWrite(LH_MOTOR_B, LOW);
-  }
-  else 
-  {
-    analogWrite(LH_MOTOR_A, LOW);
-    analogWrite(LH_MOTOR_B, speed);
-  }
-  
+  sv1 = map(analogRead(svet1), black, white, 0, 100);
+  sv2 = map(analogRead(svet2), black, white, 0, 100);
 }
-void lh_off()
+
+int PD(int a, int b)
 {
-  analogWrite(LH_MOTOR_A, LOW);
-  analogWrite(LH_MOTOR_B, LOW);
+  int er = a - b;
+  int res = Kp*er + Kd*(er-last_er);
+  last_er = er;
+  return res;
+}
+
+void go_lin()
+{
+  while (digitalRead(button))
+  {
+    read_svet();
+    int dV = PD(sv1, sv2);
+    drive(SPEED + dV, SPEED - dV);
+  }
+  drive(0, 0);
+  delay(500);
+}
+
+void correct()
+{
+  while (digitalRead(button)) {}
+  white = analogRead(svet1);
+  delay(500);
+
+  while (digitalRead(button)) {}
+
+  black = analogRead(svet1);
+  delay(200);
+    
 }
 
 void loop()
 {
-  rh_motor(55);
-  //lh_motor(255);
-  //hc1_value = read_hc(trig1, echo1);
+  read_svet();
 
-  //Serial.println(hc1_value);
-  //Serial.println(digitalRead(LH_ENCODER_A));
+  if (!digitalRead(button))
+  {
+    delay(300);
+    go_lin();
+  }
 
-  //delay(2);
+  // Serial.print(sv1);
+  // Serial.print("\t");
+  // Serial.println(sv2);
 }
