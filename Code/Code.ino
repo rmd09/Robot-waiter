@@ -6,6 +6,15 @@
 #define svet1 A15
 #define svet2 A14
 
+#define trigBL 22
+#define echoBL 23
+#define trigBR 25
+#define echoBR 24
+#define trigFL 29
+#define echoFL 28
+#define trigFR 26
+#define echoFR 27
+
 #define button 52
 
 const int SPEED = 100;
@@ -18,6 +27,11 @@ int sv2 = 0;
 int white = 35;
 int black = 150;
 
+int ultBL;
+int ultBR;
+int ultFL;
+int ultFR;
+
 void setup()
 {
   pinMode(RH_MOTOR_A, OUTPUT);
@@ -27,11 +41,17 @@ void setup()
   pinMode(button, INPUT_PULLUP);
   pinMode(svet1, INPUT);
   pinMode(svet2, INPUT);
+  pinMode(echoBL, INPUT);
+  pinMode(echoBR, INPUT);
+  pinMode(echoFL, INPUT);
+  pinMode(echoFR, INPUT);
+  pinMode(trigBL, OUTPUT);
+  pinMode(trigBR, OUTPUT);
+  pinMode(trigFL, OUTPUT);
+  pinMode(trigFR, OUTPUT);
 
 
   Serial.begin(9600);
-
-  correct();
 }
 
 void drive(int lh, int rh)
@@ -75,6 +95,26 @@ void read_svet()
   sv2 = map(analogRead(svet2), black, white, 0, 100);
 }
 
+int read_ult(int trig, int echo)
+{
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+
+  int duration = pulseIn(echo, HIGH, 50000);
+  return duration * 0.017;
+}
+
+void read_all_ults()
+{
+  ultBL = read_ult(trigBL, echoBL);
+  ultBR = read_ult(trigBR, echoBR);
+  ultFR = read_ult(trigFR, echoFR);
+  ultFL = read_ult(trigFL, echoFL);
+}
+
 int PD(int a, int b)
 {
   int er = a - b;
@@ -111,14 +151,17 @@ void correct()
 void loop()
 {
   read_svet();
+  read_all_ults();
+  
+  drive(0, 0);
 
-  if (!digitalRead(button))
-  {
-    delay(300);
-    go_lin();
-  }
-
-  // Serial.print(sv1);
-  // Serial.print("\t");
-  // Serial.println(sv2);
+  Serial.print(ultBL);
+  Serial.print("\t");
+  Serial.print(ultBR);
+  Serial.print("\t");
+  Serial.print(ultFL);
+  Serial.print("\t");
+  Serial.print(ultFR);
+  Serial.print("\t");
+  Serial.println(sv2);
 }
